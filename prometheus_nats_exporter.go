@@ -13,8 +13,8 @@ import (
 
 	"time"
 
-	"github.com/nats-io/prometheus-nats-exporter/collector"
-	"github.com/nats-io/prometheus-nats-exporter/exporter"
+	"github.com/nikhilfernandes/prometheus-nats-exporter/collector"
+	"github.com/nikhilfernandes/prometheus-nats-exporter/exporter"
 )
 
 // parseServerIDAndURL parses the url argument the optional id for the server ID.
@@ -97,6 +97,7 @@ func main() {
 	flag.StringVar(&opts.CertFile, "tlscert", "", "Server certificate file (Enables HTTPS).")
 	flag.StringVar(&opts.KeyFile, "tlskey", "", "Private key for server certificate (used with HTTPS).")
 	flag.StringVar(&opts.CaFile, "tlscacert", "", "Client certificate CA for verification (used with HTTPS).")
+	flag.StringVar(&opts.NameSpace, "namespace", "", "Namespace to prepend metrics with")
 
 	flag.Parse()
 
@@ -109,10 +110,10 @@ func main() {
 		return
 	} else if len(args) > 1 {
 		fmt.Println(
-			`WARNING:  While permitted by this exporter, monitoring more than one server 
-violates Prometheus guidelines and best practices.  Each Prometheus NATS 
-exporter should monitor exactly one NATS server, preferably sitting right 
-beside it on the same machine.  Aggregate multiple servers only when 
+			`WARNING:  While permitted by this exporter, monitoring more than one server
+violates Prometheus guidelines and best practices.  Each Prometheus NATS
+exporter should monitor exactly one NATS server, preferably sitting right
+beside it on the same machine.  Aggregate multiple servers only when
 necessary.`)
 	}
 

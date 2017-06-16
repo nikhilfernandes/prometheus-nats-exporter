@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nats-io/prometheus-nats-exporter/collector"
+	"github.com/nikhilfernandes/prometheus-nats-exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -33,6 +33,7 @@ type NATSExporterOptions struct {
 	CaFile        string
 	NATSServerURL string
 	NATSServerTag string
+	NameSpace     string
 }
 
 //NATSExporter collects NATS metrics
@@ -83,23 +84,23 @@ func NewExporter(opts *NATSExporterOptions) *NATSExporter {
 	return ne
 }
 
-func (ne *NATSExporter) scheduleRetry(endpoint string) {
+func (ne *NATSExporter) scheduleRetry(endpoint string, nameSpace string) {
 	time.Sleep(ne.opts.RetryInterval)
 	ne.Lock()
-	ne.createCollector(endpoint)
+	ne.createCollector(endpoint, nameSpace)
 	ne.Unlock()
 }
 
 // Caller must lock.
-func (ne *NATSExporter) createCollector(endpoint string) {
+func (ne *NATSExporter) createCollector(endpoint string, nameSpace string) {
 	collector.Debugf("Creating a collector for endpoint: %s.", endpoint)
-	nc := collector.NewCollector(endpoint, ne.servers)
+	nc := collector.NewCollector(endpoint, ne.servers, nameSpace)
 	if err := prometheus.Register(nc); err != nil {
 		if _, ok := err.(prometheus.AlreadyRegisteredError); ok {
 			collector.Errorf("A collector for this server's metrics has already been registered.")
 		} else {
 			collector.Debugf("Unable to register collector %s (%v), Retrying.", endpoint, err)
-			go ne.scheduleRetry(endpoint)
+			go ne.scheduleRetry(endpoint, nameSpace)
 		}
 	} else {
 		collector.Debugf("Registered collector for endppoint %s.", endpoint)
@@ -138,16 +139,16 @@ func (ne *NATSExporter) initializeCollectors() error {
 		return fmt.Errorf("no collectors specfied")
 	}
 	if opts.GetSubz {
-		ne.createCollector("subsz")
+		ne.createCollector("subsz", opts.NameSpace)
 	}
 	if opts.GetVarz {
-		ne.createCollector("varz")
+		ne.createCollector("varz", opts.NameSpace)
 	}
 	if opts.GetConnz {
-		ne.createCollector("connz")
+		ne.createCollector("connz", opts.NameSpace)
 	}
 	if opts.GetRoutez {
-		ne.createCollector("routez")
+		ne.createCollector("routez", opts.NameSpace)
 	}
 	return nil
 }

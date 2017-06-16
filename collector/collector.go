@@ -12,10 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	namespace = "gnatsd"
-)
-
 // PrometheusMetricConfig holds configuration for the metrics.
 type PrometheusMetricConfig struct {
 	Help       string `json:"help"`
@@ -41,19 +37,19 @@ type NATSCollector struct {
 // Based on our current integration, we're going to treat all metrics as gauges.
 // We are going to call the set message on the gauge when we receive an updated
 // metrics pull.
-func newPrometheusGaugeVec(subsystem string, name string, help string) (metric *prometheus.GaugeVec) {
+func newPrometheusGaugeVec(subsystem string, name string, help string, nameSpace string) (metric *prometheus.GaugeVec) {
 	if help == "" {
 		help = name
 	}
 	opts := prometheus.GaugeOpts{
-		Namespace: namespace,
+		Namespace: nameSpace,
 		Subsystem: subsystem,
 		Name:      name,
 		Help:      help,
 	}
 	metric = prometheus.NewGaugeVec(opts, []string{"server_id"})
 
-	Tracef("Created metric: %s, %s, %s, %s", namespace, subsystem, name, help)
+	Tracef("Created metric: %s, %s, %s, %s", nameSpace, subsystem, name, help)
 	return metric
 }
 
@@ -166,7 +162,7 @@ func (nc *NATSCollector) Collect(ch chan<- prometheus.Metric) {
 // For each NATS Metrics endpoint (/*z) get the first URL
 // to determine the list of possible metrics.
 // TODO: flatten embedded maps.
-func (nc *NATSCollector) initMetricsFromServers() {
+func (nc *NATSCollector) initMetricsFromServers(nameSpace string) {
 	var response map[string]interface{}
 	var err error
 
@@ -197,7 +193,7 @@ func (nc *NATSCollector) initMetricsFromServers() {
 			i := response[k]
 			switch v := i.(type) {
 			case float64: // all json numbers are handled here.
-				nc.Stats[k] = newPrometheusGaugeVec(nc.endpoint, k, "")
+				nc.Stats[k] = newPrometheusGaugeVec(nc.endpoint, k, "", nameSpace)
 			case string:
 				// do nothing
 			default:
@@ -210,7 +206,7 @@ func (nc *NATSCollector) initMetricsFromServers() {
 
 // NewCollector creates a new NATS Collector from a list of monitoring URLs.
 // Each URL should be to a specific endpoint (e.g. varz, connz, subsz, or routez)
-func NewCollector(endpoint string, servers []*CollectedServer) *NATSCollector {
+func NewCollector(endpoint string, servers []*CollectedServer, namespace string) *NATSCollector {
 	// TODO:  Potentially add TLS config in the transport.
 	tr := &http.Transport{}
 	hc := &http.Client{Transport: tr}
@@ -229,7 +225,7 @@ func NewCollector(endpoint string, servers []*CollectedServer) *NATSCollector {
 		}
 	}
 
-	nc.initMetricsFromServers()
+	nc.initMetricsFromServers(namespace)
 
 	return nc
 }
